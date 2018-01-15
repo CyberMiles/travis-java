@@ -1,5 +1,7 @@
 package io.cybermiles.abci.travis;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.jtendermint.jabci.api.ICheckTx;
 import com.github.jtendermint.jabci.api.ICommit;
 import com.github.jtendermint.jabci.api.IDeliverTx;
@@ -18,6 +20,7 @@ import org.apache.http.util.EntityUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.Charset;
+import java.util.Base64;
 import java.util.Hashtable;
 import java.util.Set;
 
@@ -123,12 +126,15 @@ public final class TravisApp implements IDeliverTx, ICheckTx, ICommit, IQuery {
             System.out.println(response.getStatusLine());
             HttpEntity entity = response.getEntity();
             byte [] b = EntityUtils.toByteArray(entity);
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode node = mapper.readTree(b);
+            String str = node.asText();
+            System.out.println(str);
             EntityUtils.consume(entity);
 
             ResponseQuery.Builder respBuilder = ResponseQuery.newBuilder();
-            respBuilder.mergeFrom(b);
+            respBuilder.mergeFrom(Base64.getDecoder().decode(str));
             resp = respBuilder.build();
-
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
@@ -141,5 +147,4 @@ public final class TravisApp implements IDeliverTx, ICheckTx, ICommit, IQuery {
 
         return resp;
     }
-
 }
