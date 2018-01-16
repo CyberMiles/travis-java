@@ -103,9 +103,43 @@ public final class TravisApp implements IDeliverTx, ICheckTx, ICommit, IQuery {
     }
 
     @Override
-    public ResponseCommit requestCommit (RequestCommit requestCommit) {
+    public ResponseCommit requestCommit (RequestCommit req) {
         System.out.println("Commit");
-        return ResponseCommit.newBuilder().setCode(CodeType.OK_VALUE).build();
+        ResponseCommit resp = ResponseCommit.newBuilder().setCode(CodeType.InternalError_VALUE).build();
+
+        ByteArrayOutputStream bo = new ByteArrayOutputStream();
+
+        CloseableHttpClient httpclient = HttpClients.createDefault();
+        HttpPost httppost = new HttpPost("http://127.0.0.1:8088/commit");
+        CloseableHttpResponse response = null;
+        try {
+            req.writeTo(bo);
+            httppost.setEntity(new ByteArrayEntity(bo.toByteArray()));
+
+            response = httpclient.execute(httppost);
+            System.out.println(response.getStatusLine());
+            HttpEntity entity = response.getEntity();
+            byte [] b = EntityUtils.toByteArray(entity);
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode node = mapper.readTree(b);
+            String str = node.asText();
+            System.out.println(str);
+            EntityUtils.consume(entity);
+
+            ResponseCommit.Builder respBuilder = ResponseCommit.newBuilder();
+            respBuilder.mergeFrom(Base64.getDecoder().decode(str));
+            resp = respBuilder.build();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                response.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        return resp;
     }
 
     @Override
